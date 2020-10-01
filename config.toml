@@ -1,0 +1,31 @@
+# The URL the site will be built for
+base_url = "https://psiace.me"
+
+# Choose a theme
+theme = "terminimal"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# Whether to do syntax highlighting
+# Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
+highlight_code = false
+
+# Whether to build a search index to be used later on by a JavaScript library
+build_search_index = false
+
+[extra]
+# Put all your custom variables here
+
+# The logo text - defaults to "Terminimal theme"
+logo_text = "PsiACE.ME"
+
+# Author name: when specified, modifies the default
+# copyright text. Apart from author, it will
+# contain current year and a link to the theme.
+author = "Chojan Shang"
+
+# Use full Hack character set, not just a subset.
+# Switch this to true if you need full unicode support.
+# Defaults to false.
+use_full_hack_font = true

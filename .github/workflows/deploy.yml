@@ -2,7 +2,7 @@ on: push
 name: Build and deploy on push
 jobs:
   build:
-    name: shalzz/zola-deploy-action
+    name: psiace/psiace.github.io
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -12,3 +12,8 @@ jobs:
         PAGES_BRANCH: master
         TOKEN: ${{ secrets.TOKEN }}
         BUILD_FLAGS: --drafts
+    - name: jakejarvis/cloudflare-purge-action
+      uses: jakejarvis/cloudflare-purge-action@master
+      env:
+        CLOUDFLARE_ZONE: ${{ secrets.CLOUDFLARE_ZONE }}
+        CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}

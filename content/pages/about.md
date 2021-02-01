@@ -3,6 +3,8 @@ title = "about me"
 path = "about"
 +++
 
+<img height="256" style="filter: invert(100%);" src="https://raw.githubusercontent.com/PsiACE/logo/main/logo.svg"/>
+
 # Chojan Shang
 
 10 / 24 / 1998 - ?? / ?? / ????
@@ -19,8 +21,6 @@ Hi, I'm Chojan Shang, a Chinese college student who is about to graduate, majori
 - Have been studying hard.
 - Waiting to start a suitable career, maybe you can give me a chance?
 - Thinking, Coding, Writing
-
-  ![Chojan's github stats](https://github-readme-stats.vercel.app/api?username=psiace&count_private=true)
 
 ## Contact
 

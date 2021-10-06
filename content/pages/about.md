@@ -13,7 +13,11 @@ path = "about"
 
 ## Intro
 
-Hi, I'm Chojan Shang, a Chinese college student who is about to graduate, majoring in computer science and coding for my own interests.
+Hi, I'm Chojan Shang, majoring in computer science and coding for my own interests.
+
+In addition to writing my own projects, I also contribute code to my favorite open source community. In my spare time, I do some translation and writing work, and introduce technology to the Chinese community.
+
+You can find some of my current personal projects at [@ritelabs](https://github.com/ritelabs/) and the archived projects at [@psiace-archive](https://github.com/psiace-archive) .
 
 **Check my current status**
 

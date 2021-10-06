@@ -1,6 +1,8 @@
 # The URL the site will be built for
 base_url = "https://psiace.me"
 
+title = "PsiACE.ME"
+
 # Choose a theme
 theme = "terminimal"
 

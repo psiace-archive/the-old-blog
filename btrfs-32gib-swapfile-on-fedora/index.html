@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PsiACE.ME</title>
+    
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <meta name="robots" content="noodp"/>
+
+    <link rel="stylesheet" href="https://psiace.me/style.css">
+    <link rel="stylesheet" href="https://psiace.me/color/blue.css">
+
+    <link rel="stylesheet" href="https://psiace.me/font-hack.css">
+
+    </head>
+
+<body class="">
+<div class="container">
+    
+    <header class="header">
+        <div class="header__inner">
+            <div class="header__logo">
+                    
+                <a href="https://psiace.me" style="text-decoration: none;">
+                    <div class="logo">
+                            PsiACE.ME
+                        </div>
+                </a>
+            </div>
+        </div>
+
+        <nav class="menu">
+            <ul class="menu__inner">
+                
+                <li class="active"><a href="https://psiace.me">blog</a></li>
+            
+                <li><a href="https://psiace.me/tags">tags</a></li>
+            
+                <li><a href="https://psiace.me/archive">archive</a></li>
+            
+                <li><a href="https://psiace.me/about">about me</a></li>
+            
+                <li><a href="https://github.com/psiace" target="_blank" rel="noopener noreferrer">github</a></li>
+            </ul>
+        </nav>
+    
+    </header>
+    
+
+    <div class="content">
+        
+    <div class="post">
+        
+    <h1 class="post-title"><a href="https://psiace.me/btrfs-32gib-swapfile-on-fedora/">在 Fedora 上为 Btrfs 新建 32GiB Swapfile</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-23
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2022/">#2022</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/btrfs/">#Btrfs</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/swapfile/">#Swapfile</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/fedora/">#Fedora</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/linux/">#Linux</a></span>
+    
+
+        
+        <div class="post-content">
+            <p>受到 <a href="https://github.com/datafuselabs/databend/pull/3946">Databend - set swap to 10G</a> 的感召，检查了一下自己本子的 Swap ，只有大概 8G 的 zram 。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">[psiace@fedora ~]$ swapon -s
+Filename				Type		  Size		  Used	Priority
+&#x2F;dev&#x2F;zram0      partition	8388604		0	    100
+</code></pre>
+<p>完蛋，不能顺利跑完 grcov 限定版 unit-test 的原因大概就在这里了（之前有讨论过是 OOM）。本着「大就是好，多就是美」的原则，决定给它来个超级加倍，再塞个 32 GiB 的 Swapfile 上去。</p>
+<h2 id="btrfs-xian-ding-zhi-chu-shi-hua-swapfile">Btrfs 限定之初始化 Swapfile</h2>
+<p>自 5.0 内核之后，Btrfs 才支持创建 Swapfile ，而且有一些特别的要求：</p>
+<ul>
+<li>Swapfile 不能放在 snapshotted subvolume （快照子卷）上。</li>
+<li>不支持跨多设备文件系统上的 Swapfile 。</li>
+</ul>
+<p>所以正确的做法是：新建一个 non-snapshotted subvolume ，然后在该子卷之下创建禁用压缩的 Swapfile 。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell"># 创建 non-snapshotted subvolume 。
+[psiace@fedora &#x2F;]$ sudo btrfs subvolume create swap
+Create subvolume &#x27;.&#x2F;swap&#x27;
+# 进入子卷。
+[psiace@fedora &#x2F;]$ cd swap
+# 新建长度为 0 的 Swapfile 。
+[psiace@fedora swap]$ sudo truncate -s 0 .&#x2F;swapfile
+# 设置交换文件的属性，使其免于 copy-on-write 。
+[psiace@fedora swap]$ sudo chattr +C .&#x2F;swapfile
+# 禁用压缩。
+[psiace@fedora swap]$ sudo btrfs property set .&#x2F;swapfile compression none
+</code></pre>
+<p>注意，这些需要在系统根目录下完成，以避免权限问题和设置问题。</p>
+<h2 id="she-ding-swapfile-zuo-wei-swap-cheng-fen-zhi-yi">设定 Swapfile 作为 Swap 成分之一</h2>
+<p>Swapfile 是创建特定交换分区的一种替代方案，好处是方便创建和删除、也便于动态变更大小。</p>
+<p>这种方案比较适合 SSD 空间充裕的情况。刚好可以组成一个 memory -&gt; zram -&gt; swapfile 的多级交换。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell"># 将 Swapfile 填充至合适的大小，一般选择内存空间的一半或者与内存空间相当。
+# 这里仅仅是为了好玩，选择了巨量的 32GiB ，有浪费之嫌。
+[psiace@fedora swap]$ sudo dd if=&#x2F;dev&#x2F;zero of=.&#x2F;swapfile bs=1M count=32768 status=progress
+33980153856字节（34 GB，32 GiB）已复制，20 s，1.7 GB&#x2F;s
+记录了32768+0 的读入
+记录了32768+0 的写出
+34359738368字节（34 GB，32 GiB）已复制，21.2624 s，1.6 GB&#x2F;s
+# 设置正确的权限。
+[psiace@fedora swap]$ sudo chmod 600 .&#x2F;swapfile
+# 格式化 Swapfile 作为交换类型。
+[psiace@fedora swap]$ sudo mkswap .&#x2F;swapfile
+正在设置交换空间版本 1，大小 = 32 GiB (34359734272  个字节)
+无标签，UUID=2e48f371-62a9-487a-9613-382b386b2836
+# 激活交换文件，并设定优先级。
+# 由于 zram 的优先级是 100 ，所以这里设定成 50 。毕竟 zram 的性能比 swapfile 要强不少。
+[psiace@fedora swap]$ sudo swapon --priority 50 .&#x2F;swapfile
+</code></pre>
+<h2 id="jian-cha-swap-kong-jian-bing-she-zhi-zi-dong-gua-zai">检查 Swap 空间并设置自动挂载</h2>
+<p>那么，经过之前两步，已经得到了接近 40GiB 的 Swap 空间，接下来就是检查一下，并设置挂载。</p>
+<pre><code># 使用 free 查看概览。
+[psiace@fedora ~]$ free -m
+               total        used        free      shared  buff&#x2F;cache   available
+Mem:           15453        5206         290         109        9956        9808
+Swap:          40959           2       40957
+# 使用 swapon 查看详情。
+[psiace@fedora ~]$ swapon -s
+Filename				Type		  Size		  Used		Priority
+&#x2F;dev&#x2F;zram0      partition	8388604		2560		100
+&#x2F;swap&#x2F;swapfile  file		  33554428	0		    50
+# 编辑 fstab ，添加指定条目以完成挂载。
+# 这里必须带上子卷名，UUID 可以不写。
+[psiace@fedora ~]$ sudo nano &#x2F;etc&#x2F;fstab
+&#x2F;swap&#x2F;swapfile    none    swap    defaults    0    0
+</code></pre>
+<h2 id="can-kao-zi-liao">参考资料</h2>
+<p>笑死，一个多年 Fedora 用户看的文档大多都来自 Arch Wiki 。</p>
+<ul>
+<li>https://wiki.archlinux.org/title/Improving_performance#zram_or_zswap</li>
+<li>https://wiki.archlinux.org/title/Btrfs#Swap_file</li>
+<li>https://wiki.archlinux.org/title/Swap#Swap_file_creation</li>
+<li>https://wiki.archlinux.org/title/Fstab</li>
+</ul>
+<hr />
+<p>克制 Rust 编译大型项目时 OOM 还有一些小技巧，也许下次可以水一点内容。</p>
+<p>我没有摸鱼！（手动狗头）</p>
+
+        </div>
+
+        
+        <div class="pagination">
+            <div class="pagination__title">
+                <span class="pagination__title-h">Thanks for reading! Read other posts?</span>
+                <hr />
+            </div>
+            <div class="pagination__buttons">
+                
+                    <span class="button next">
+                        <a href="https://psiace.me/decameron-2202-0002/">
+                            <span class="button__text">「十日谈」- 22 年 02 期 - 总第 0002 期</span>&nbsp;
+                            <span class="button__icon">→</span>
+                        </a>
+                    </span>
+                </div>
+        </div>
+    
+    </div>
+
+    </div>
+
+    
+    <footer class="footer">
+        <div class="footer__inner">
+                <div class="copyright">
+                        <span>© 
+    2022
+ Chojan Shang</span>
+                    <span class="copyright-theme">
+                        <span class="copyright-theme-sep">:: </span>
+                        Theme: <a href="https://github.com/pawroman/zola-theme-terminimal/">Terminimal</a> by pawroman
+                    </span>
+                </div>
+            </div>
+    </footer>
+    
+
+</div>
+</body>
+
+</html>

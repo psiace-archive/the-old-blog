@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PsiACE.ME</title>
+    
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <meta name="robots" content="noodp"/>
+
+    <link rel="stylesheet" href="https://psiace.me/style.css">
+    <link rel="stylesheet" href="https://psiace.me/color/blue.css">
+
+    <link rel="stylesheet" href="https://psiace.me/font-hack.css">
+
+    </head>
+
+<body class="">
+<div class="container">
+    
+    <header class="header">
+        <div class="header__inner">
+            <div class="header__logo">
+                    
+                <a href="https://psiace.me" style="text-decoration: none;">
+                    <div class="logo">
+                            PsiACE.ME
+                        </div>
+                </a>
+            </div>
+        </div>
+
+        <nav class="menu">
+            <ul class="menu__inner">
+                
+                <li class="active"><a href="https://psiace.me">blog</a></li>
+            
+                <li><a href="https://psiace.me/tags">tags</a></li>
+            
+                <li><a href="https://psiace.me/archive">archive</a></li>
+            
+                <li><a href="https://psiace.me/about">about me</a></li>
+            
+                <li><a href="https://github.com/psiace" target="_blank" rel="noopener noreferrer">github</a></li>
+            </ul>
+        </nav>
+    
+    </header>
+    
+
+    <div class="content">
+        
+    <div class="post">
+        
+    <h1 class="post-title"><a href="https://psiace.me/decameron-2202-0002/">「十日谈」- 22 年 02 期 - 总第 0002 期</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-21
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2022/">#2022</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/decameron-shi-ri-tan/">#Decameron-十日谈</a></span>
+    
+
+        
+        <div class="post-content">
+            <p>这里是 PsiACE，为你带来关于最近十天关于我的一切（并不）。好吧，现在是十一天 :)</p>
+<h2 id="kai-yuan-yan-xi">开源 &amp; 研习</h2>
+<ul>
+<li>做了 msql-srv 的 async 支持，不过是个很简陋的实现（<a href="https://github.com/datafuse-extras/msql-srv/pull/18">datafuselabs/msql-srv#18</a>）。</li>
+<li>Databend 主 repo 只是简单看了几个 PR ，arrow2 还没更新，虽然 jorge 给了提示但是没搞定，要是有人顺手搞了就好了。</li>
+<li>给 tikv/fail-rs 提了 PR 也合并了，顺手就把之前 fork 的 failpoints 也发了 v0.2.0 。</li>
+<li>手抄了 64 bit cityhash 的实现，所以 naive-cityhash 的 v0.2.0 有一些原生的 Rust cityhash64 函数。</li>
+<li>两个小的依赖 PR 提交给 openraft 和 risinglight ，算是一个不合格的依赖替换工具人。</li>
+<li>大致读完了 Crystal 那篇，估计不会写小作文，大体上的思路是一个加了 Cache 的 DAL ，以及一些深入的工作：语义缓存、结果重用之类的。还行。</li>
+</ul>
+<blockquote>
+<p>感谢 <code>-Z symbol-mangling-version=v0</code> 拯救了我的笔记本，上一次这么感恩大概是用上 mold 。</p>
+</blockquote>
+<h2 id="yu-le-sheng-huo">娱乐 &amp; 生活</h2>
+<ul>
+<li>收到了 <a href="https://ligai.cn/">LigaAI</a> 的礼物，有特别的纪念徽章和立牌，不过没顾上放图。</li>
+<li>练字比较少，没少出去呼吸新鲜空气，晚上甚至开始背单词，虽然就几个。</li>
+<li>买了数据库那本帆船书，还挺大部头，80r 一点不亏。</li>
+<li>开始试着记账，主要是想量化一下自己的支出。股票多少赚点，基金简直是一言难尽。</li>
+<li>只做了一顿饭，色香味失衡，但是肉很多。加了苹果腌制和炖的，有果香，下次记得放盐。</li>
+</ul>
+<blockquote>
+<p>这周总算没有购物了，买书可不能算进去，书是要供起来的。</p>
+</blockquote>
+<h2 id="die-dai">迭代</h2>
+<ul>
+<li>整合个人 repo 目前还在想要不要做，大概明天会有结果吧。</li>
+<li>Clickhouse 那本书还只读了一二两章，算是没完成，只能后面看。</li>
+<li>争取多给 Databend 贡献代码，手里还攒着好几个 issue 没完成。</li>
+<li>再读篇论文，估计得找综述型的。没有发现别的就去按 reading list 读了。</li>
+</ul>
+<blockquote>
+<p>感觉一个迭代的精力是有限的，关键还是要集中起来办大事。</p>
+</blockquote>
+<hr />
+<p>每天看看时间轴上的动态，都觉得自己好菜。最大的乐趣应该是白嫖 <a href="https://github.com/Xuanwo">Xuanwo</a> 哥哥的笔记 :p</p>
+<p>那么，新的迭代，请多多指教了。</p>
+
+        </div>
+
+        
+        <div class="pagination">
+            <div class="pagination__title">
+                <span class="pagination__title-h">Thanks for reading! Read other posts?</span>
+                <hr />
+            </div>
+            <div class="pagination__buttons">
+                    <span class="button previous">
+                        <a href="https://psiace.me/btrfs-32gib-swapfile-on-fedora/">
+                            <span class="button__icon">←</span>&nbsp;
+                            <span class="button__text">在 Fedora 上为 Btrfs 新建 32GiB Swapfile</span>
+                        </a>
+                    </span>
+                
+                
+                    <span class="button next">
+                        <a href="https://psiace.me/decameron-2201-0001/">
+                            <span class="button__text">「十日谈」- 22 年 01 期 - 总第 0001 期</span>&nbsp;
+                            <span class="button__icon">→</span>
+                        </a>
+                    </span>
+                </div>
+        </div>
+    
+    </div>
+
+    </div>
+
+    
+    <footer class="footer">
+        <div class="footer__inner">
+                <div class="copyright">
+                        <span>© 
+    2022
+ Chojan Shang</span>
+                    <span class="copyright-theme">
+                        <span class="copyright-theme-sep">:: </span>
+                        Theme: <a href="https://github.com/pawroman/zola-theme-terminimal/">Terminimal</a> by pawroman
+                    </span>
+                </div>
+            </div>
+    </footer>
+    
+
+</div>
+</body>
+
+</html>

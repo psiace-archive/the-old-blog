@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PsiACE.ME</title>
+    
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <meta name="robots" content="noodp"/>
+
+    <link rel="stylesheet" href="https://psiace.me/style.css">
+    <link rel="stylesheet" href="https://psiace.me/color/blue.css">
+
+    <link rel="stylesheet" href="https://psiace.me/font-hack.css">
+
+    </head>
+
+<body class="">
+<div class="container">
+    
+    <header class="header">
+        <div class="header__inner">
+            <div class="header__logo">
+                    
+                <a href="https://psiace.me" style="text-decoration: none;">
+                    <div class="logo">
+                            PsiACE.ME
+                        </div>
+                </a>
+            </div>
+        </div>
+
+        <nav class="menu">
+            <ul class="menu__inner">
+                
+                <li class="active"><a href="https://psiace.me">blog</a></li>
+            
+                <li><a href="https://psiace.me/tags">tags</a></li>
+            
+                <li><a href="https://psiace.me/archive">archive</a></li>
+            
+                <li><a href="https://psiace.me/about">about me</a></li>
+            
+                <li><a href="https://github.com/psiace" target="_blank" rel="noopener noreferrer">github</a></li>
+            </ul>
+        </nav>
+    
+    </header>
+    
+
+    <div class="content">
+        
+        <div class="posts">
+                <div class="post on-list">
+                    
+    <h1 class="post-title"><a href="https://psiace.me/btrfs-32gib-swapfile-on-fedora/">在 Fedora 上为 Btrfs 新建 32GiB Swapfile</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-23
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2022/">#2022</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/btrfs/">#Btrfs</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/swapfile/">#Swapfile</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/fedora/">#Fedora</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/linux/">#Linux</a></span>
+    
+
+                    
+        <div class="post-content">
+            <p>受到 <a href="https://github.com/datafuselabs/databend/pull/3946">Databend - set swap to 10G</a> 的感召，检查了一下自己本子的 Swap ，只有大概 8G 的 zram 。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">[psiace@fedora ~]$ swapon -s
+Filename				Type		  Size		  Used	Priority
+&#x2F;dev&#x2F;zram0      partition	8388604		0	    100
+</code></pre>
+<p>完蛋，不能顺利跑完 grcov 限定版 unit-test 的原因大概就在这里了（之前有讨论过是 OOM）。本着「大就是好，多就是美」的原则，决定给它来个超级加倍，再塞个 32 GiB 的 Swapfile 上去。</p>
+<h2 id="btrfs-xian-ding-zhi-chu-shi-hua-swapfile">Btrfs 限定之初始化 Swapfile</h2>
+<p>自 5.0 内核之后，Btrfs 才支持创建 Swapfile ，而且有一些特别的要求：</p>
+<ul>
+<li>Swapfile 不能放在 snapshotted subvolume （快照子卷）上。</li>
+<li>不支持跨多设备文件系统上的 Swapfile 。</li>
+</ul>
+<p>所以正确的做法是：新建一个 non-snapshotted subvolume ，然后在该子卷之下创建禁用压缩的 Swapfile 。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell"># 创建 non-snapshotted subvolume 。
+[psiace@fedora &#x2F;]$ sudo btrfs subvolume create swap
+Create subvolume &#x27;.&#x2F;swap&#x27;
+# 进入子卷。
+[psiace@fedora &#x2F;]$ cd swap
+# 新建长度为 0 的 Swapfile 。
+[psiace@fedora swap]$ sudo truncate -s 0 .&#x2F;swapfile
+# 设置交换文件的属性，使其免于 copy-on-write 。
+[psiace@fedora swap]$ sudo chattr +C .&#x2F;swapfile
+# 禁用压缩。
+[psiace@fedora swap]$ sudo btrfs property set .&#x2F;swapfile compression none
+</code></pre>
+<p>注意，这些需要在系统根目录下完成，以避免权限问题和设置问题。</p>
+<h2 id="she-ding-swapfile-zuo-wei-swap-cheng-fen-zhi-yi">设定 Swapfile 作为 Swap 成分之一</h2>
+<p>Swapfile 是创建特定交换分区的一种替代方案，好处是方便创建和删除、也便于动态变更大小。</p>
+<p>这种方案比较适合 SSD 空间充裕的情况。刚好可以组成一个 memory -&gt; zram -&gt; swapfile 的多级交换。</p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell"># 将 Swapfile 填充至合适的大小，一般选择内存空间的一半或者与内存空间相当。
+# 这里仅仅是为了好玩，选择了巨量的 32GiB ，有浪费之嫌。
+[psiace@fedora swap]$ sudo dd if=&#x2F;dev&#x2F;zero of=.&#x2F;swapfile bs=1M count=32768 status=progress
+33980153856字节（34 GB，32 GiB）已复制，20 s，1.7 GB&#x2F;s
+记录了32768+0 的读入
+记录了32768+0 的写出
+34359738368字节（34 GB，32 GiB）已复制，21.2624 s，1.6 GB&#x2F;s
+# 设置正确的权限。
+[psiace@fedora swap]$ sudo chmod 600 .&#x2F;swapfile
+# 格式化 Swapfile 作为交换类型。
+[psiace@fedora swap]$ sudo mkswap .&#x2F;swapfile
+正在设置交换空间版本 1，大小 = 32 GiB (34359734272  个字节)
+无标签，UUID=2e48f371-62a9-487a-9613-382b386b2836
+# 激活交换文件，并设定优先级。
+# 由于 zram 的优先级是 100 ，所以这里设定成 50 。毕竟 zram 的性能比 swapfile 要强不少。
+[psiace@fedora swap]$ sudo swapon --priority 50 .&#x2F;swapfile
+</code></pre>
+<h2 id="jian-cha-swap-kong-jian-bing-she-zhi-zi-dong-gua-zai">检查 Swap 空间并设置自动挂载</h2>
+<p>那么，经过之前两步，已经得到了接近 40GiB 的 Swap 空间，接下来就是检查一下，并设置挂载。</p>
+<pre><code># 使用 free 查看概览。
+[psiace@fedora ~]$ free -m
+               total        used        free      shared  buff&#x2F;cache   available
+Mem:           15453        5206         290         109        9956        9808
+Swap:          40959           2       40957
+# 使用 swapon 查看详情。
+[psiace@fedora ~]$ swapon -s
+Filename				Type		  Size		  Used		Priority
+&#x2F;dev&#x2F;zram0      partition	8388604		2560		100
+&#x2F;swap&#x2F;swapfile  file		  33554428	0		    50
+# 编辑 fstab ，添加指定条目以完成挂载。
+# 这里必须带上子卷名，UUID 可以不写。
+[psiace@fedora ~]$ sudo nano &#x2F;etc&#x2F;fstab
+&#x2F;swap&#x2F;swapfile    none    swap    defaults    0    0
+</code></pre>
+<h2 id="can-kao-zi-liao">参考资料</h2>
+<p>笑死，一个多年 Fedora 用户看的文档大多都来自 Arch Wiki 。</p>
+<ul>
+<li>https://wiki.archlinux.org/title/Improving_performance#zram_or_zswap</li>
+<li>https://wiki.archlinux.org/title/Btrfs#Swap_file</li>
+<li>https://wiki.archlinux.org/title/Swap#Swap_file_creation</li>
+<li>https://wiki.archlinux.org/title/Fstab</li>
+</ul>
+<hr />
+<p>克制 Rust 编译大型项目时 OOM 还有一些小技巧，也许下次可以水一点内容。</p>
+<p>我没有摸鱼！（手动狗头）</p>
+
+        </div>
+
+                </div>
+            
+                <div class="post on-list">
+                    
+    <h1 class="post-title"><a href="https://psiace.me/decameron-2202-0002/">「十日谈」- 22 年 02 期 - 总第 0002 期</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-21
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2022/">#2022</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/decameron-shi-ri-tan/">#Decameron-十日谈</a></span>
+    
+
+                    
+        <div class="post-content">
+            <p>这里是 PsiACE，为你带来关于最近十天关于我的一切（并不）。好吧，现在是十一天 :)</p>
+<h2 id="kai-yuan-yan-xi">开源 &amp; 研习</h2>
+<ul>
+<li>做了 msql-srv 的 async 支持，不过是个很简陋的实现（<a href="https://github.com/datafuse-extras/msql-srv/pull/18">datafuselabs/msql-srv#18</a>）。</li>
+<li>Databend 主 repo 只是简单看了几个 PR ，arrow2 还没更新，虽然 jorge 给了提示但是没搞定，要是有人顺手搞了就好了。</li>
+<li>给 tikv/fail-rs 提了 PR 也合并了，顺手就把之前 fork 的 failpoints 也发了 v0.2.0 。</li>
+<li>手抄了 64 bit cityhash 的实现，所以 naive-cityhash 的 v0.2.0 有一些原生的 Rust cityhash64 函数。</li>
+<li>两个小的依赖 PR 提交给 openraft 和 risinglight ，算是一个不合格的依赖替换工具人。</li>
+<li>大致读完了 Crystal 那篇，估计不会写小作文，大体上的思路是一个加了 Cache 的 DAL ，以及一些深入的工作：语义缓存、结果重用之类的。还行。</li>
+</ul>
+<blockquote>
+<p>感谢 <code>-Z symbol-mangling-version=v0</code> 拯救了我的笔记本，上一次这么感恩大概是用上 mold 。</p>
+</blockquote>
+<h2 id="yu-le-sheng-huo">娱乐 &amp; 生活</h2>
+<ul>
+<li>收到了 <a href="https://ligai.cn/">LigaAI</a> 的礼物，有特别的纪念徽章和立牌，不过没顾上放图。</li>
+<li>练字比较少，没少出去呼吸新鲜空气，晚上甚至开始背单词，虽然就几个。</li>
+<li>买了数据库那本帆船书，还挺大部头，80r 一点不亏。</li>
+<li>开始试着记账，主要是想量化一下自己的支出。股票多少赚点，基金简直是一言难尽。</li>
+<li>只做了一顿饭，色香味失衡，但是肉很多。加了苹果腌制和炖的，有果香，下次记得放盐。</li>
+</ul>
+<blockquote>
+<p>这周总算没有购物了，买书可不能算进去，书是要供起来的。</p>
+</blockquote>
+<h2 id="die-dai">迭代</h2>
+<ul>
+<li>整合个人 repo 目前还在想要不要做，大概明天会有结果吧。</li>
+<li>Clickhouse 那本书还只读了一二两章，算是没完成，只能后面看。</li>
+<li>争取多给 Databend 贡献代码，手里还攒着好几个 issue 没完成。</li>
+<li>再读篇论文，估计得找综述型的。没有发现别的就去按 reading list 读了。</li>
+</ul>
+<blockquote>
+<p>感觉一个迭代的精力是有限的，关键还是要集中起来办大事。</p>
+</blockquote>
+<hr />
+<p>每天看看时间轴上的动态，都觉得自己好菜。最大的乐趣应该是白嫖 <a href="https://github.com/Xuanwo">Xuanwo</a> 哥哥的笔记 :p</p>
+<p>那么，新的迭代，请多多指教了。</p>
+
+        </div>
+
+                </div>
+            
+                <div class="post on-list">
+                    
+    <h1 class="post-title"><a href="https://psiace.me/decameron-2201-0001/">「十日谈」- 22 年 01 期 - 总第 0001 期</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-10
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2022/">#2022</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/decameron-shi-ri-tan/">#Decameron-十日谈</a></span>
+    
+
+                    
+        <div class="post-content">
+            <p>这里是 PsiACE，为你带来关于最近十天关于我的一切（并不）。</p>
+<h2 id="kai-yuan-gong-zuo">开源 &amp; 工作</h2>
+<ul>
+<li>试着给 Databend 引进了 tokio-console 的支持，蛮好玩的（<a href="https://github.com/datafuselabs/databend/pull/3739">Databend#3739</a>）</li>
+<li>一些日常维护，最近在和 arrow2 做斗争 :( Jorge 做了几个比较大的变更，感觉要跟上需要改不少东西。</li>
+<li>把 ritelinked 归化到 DataSlime 下面，也升级了 2021 edition，要发版还需要做些新功能。</li>
+<li>ritehash 居然迎来了第一个用户，所以更新了一下，其实只是 fxhash 的分叉维护版本啦。</li>
+</ul>
+<blockquote>
+<p>什么是分步式？因为无法一次性完工所以不得不分步进行</p>
+</blockquote>
+<h2 id="yu-le-sheng-huo">娱乐 &amp; 生活</h2>
+<ul>
+<li>重新拾起练字，还没有写很多，不过顺便奖励了自己一支新的笔。</li>
+<li>买了一点瘦人（一个有意思的店家）的香，很有韵味，估计少有机会点。</li>
+<li>新入了词典笔，拿来读论文应该是个好工具。</li>
+<li>最近有试着周三做顿饭，比如之前熬了一锅完全不红的红菜汤，味道还行。</li>
+</ul>
+<blockquote>
+<p>额，购物总是在不经意之间发生的。</p>
+</blockquote>
+<h2 id="die-dai">迭代</h2>
+<ul>
+<li>把关于自己的 repo 做一个整合，all in one，这样可以让大家从一个入口找到我的全部东西。</li>
+<li>坚持锻炼身体，至少每天出去呼吸一下新鲜空气。</li>
+<li>读一篇论文， <a href="https://github.com/flaneur2020">f 叔</a> 发的关于 Cache 的还没认真读完，就它了。</li>
+<li>争取把 Clickhouse 那本书里关于原理和实现的部分看完，算是补补课。</li>
+</ul>
+<blockquote>
+<p>属于是伟大蓝图了！新赛季死活打不上铂金二，退游以后又多了不少时间。</p>
+</blockquote>
+<hr />
+<p>唔，大体上「十日谈」这个 tag 应该会成为一个周期性总结的部分，一年大概会有 36 期。</p>
+<p>那么，新的迭代，请多多指教了。</p>
+
+        </div>
+
+                </div>
+            
+                <div class="post on-list">
+                    
+    <h1 class="post-title"><a href="https://psiace.me/2021-life-is-not-a-struggle/">2021 年度总结 - Life is not a struggle</a></h1>
+    <div class="post-meta-inline">
+        
+    <span class="post-date">
+            2022-01-01
+        </span>
+
+    </div>
+
+    
+        <span class="post-tags-inline">
+                :: tags:&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/2021/">#2021</a>&nbsp;
+                <a class="post-tag" href="https://psiace.me/tags/annual-reports/">#Annual Reports</a></span>
+    
+
+                    
+        <div class="post-content">
+            <p>说是年度总结，却是在 2022 的第一天夜里才匆匆写几句，就是留个念头。</p>
+<p>2021 年首要的关键字就是 <strong>「工作」</strong> 咯，从 7 月份入职，整整半年过去，应该算是顺利成为职场新人了。非常感谢虎哥和 Datafuse Labs，让我有机会体验「全职开源 + 远程办公」的生活。成功凑了不少 commits 在 GitHub 上，还要继续努力才行。</p>
+<p>回过头看看 2021 上半年，几乎就只有两次答辩的时候去了一段时间学校，感觉确实是离校园生活越来越远了。中间五月份因为扭伤比较严重，在床上躺了将近一个月，想起来还挺怨念的。不知道能不能有机会边工作边读读书（xs，总想着回炉重造是怎么回事）。</p>
+<p>总之呢，2021 已经过去了。「Life is not a struggle」，希望自己能够与生活和解。新的一年，不要那么贪心，做好每一件事情，扎扎实实投入到学习和工作之中。</p>
+<hr />
+<p>另，昨天发了好多遍「早睡早起」，然而还是没做到 :(</p>
+
+        </div>
+
+                </div>
+            <div class="pagination">
+                <div class="pagination__buttons"></div>
+            </div>
+        </div>
+        
+    </div>
+
+    
+    <footer class="footer">
+        <div class="footer__inner">
+                <div class="copyright">
+                        <span>© 
+    2022
+ Chojan Shang</span>
+                    <span class="copyright-theme">
+                        <span class="copyright-theme-sep">:: </span>
+                        Theme: <a href="https://github.com/pawroman/zola-theme-terminimal/">Terminimal</a> by pawroman
+                    </span>
+                </div>
+            </div>
+    </footer>
+    
+
+</div>
+</body>
+
+</html>
